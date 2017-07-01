@@ -1,92 +1,166 @@
 package plugin
 
-/*
-  // user interface
-  func Load(path string) error {
-		cmd, err := NewCmd(path)
-		pl := &Plugin{cmd: cmd}
+import (
+	"fmt"
+	"os"
+)
 
-		type, err := pl.Type()
-		plugins[type] = pl
-  }
+// function ID
+type FuncID int
 
-  func Release() {
-		for _, pl := range plugins {
-			pl.close()
+const (
+	FUNC_TYPE FuncID = iota
+	FUNC_CLOSE
+	FUNC_HELLO
+	FUNC_HELLO2
+)
+
+// loaded plugin list
+var plugins = map[string]*Plugin{}
+
+//
+// Plugin
+//
+type Plugin struct {
+	cmd *Cmd
+}
+
+func (o *Plugin) Type() (string, error) {
+	rets, err := cmd.call(FUNC_TYPE, []byte{})
+	if err != nil {
+		return "", err
+	}
+	return string(rets), nil
+}
+
+func (o *Plugin) Hello() (string, error) {
+	rets, err := cmd.call(FUNC_HELLO, []byte{})
+	if err != nil {
+		return "", err
+	}
+	return string(rets), nil
+}
+
+func (o *Plugin) Hello2(str string) (string, error) {
+	rets, err := cmd.call(FUNC_HELLO2, []byte{str})
+	if err != nil {
+		return "", err
+	}
+	return string(rets), nil
+}
+
+func (o *Plugin) close() error {
+	err := cmd.SendID(FUNC_CLOSE)
+	if err != nil {
+		return "", err
+	}
+	err := cmd.SendArgs([]byte{})
+	if err != nil {
+		return "", err
+	}
+	return nil
+}
+
+func (o *Plugin) call(id FuncID, args []byte) ([]byte, error) {
+	err := cmd.SendID(id)
+	if err != nil {
+		return nil, err
+	}
+	err := cmd.SendArgs(args)
+	if err != nil {
+		return nil, err
+	}
+	return cmd.RecvReturn()
+}
+
+//
+// User Interface
+//
+func Load(path string) error {
+	cmd, err := NewCmd(path)
+	if err != nil {
+		return err
+	}
+
+	pl := &Plugin{cmd: cmd}
+	t, err := pl.Type()
+	if err != nil {
+		pl.close()
+		return err
+	}
+
+	plugins[t] = pl
+	return nil
+}
+
+func Release() {
+	for _, pl := range plugins {
+		pl.close()
+	}
+	plugins = map[string]*Plugin{}
+}
+
+func Get(tag string) (*Plugin, error) {
+	if pl, ok := plugins[tag]; ok {
+		return plugins[tag], nil
+	} else {
+		return nil, fmt.Errorf("Not Loaded %s", tag)
+	}
+}
+
+//
+// vendor interface
+//
+func DispatchLoop(adapt *HelloAdapter) error {
+	cmd, err := NewCmd2(os.Stdin, os.Stdout)
+	if err != nil {
+		return err
+	}
+
+	for {
+		funcID, err := cmd.RecvID()
+		if err != nil {
+			return err
 		}
-  }
+		args, err := cmd.RecvArgs()
+		if err != nil {
+			return err
+		}
 
-  func Get(tag string) (*Plugin, error) {
-		return plugins[tag]
-  }
-
-
-	// Plugin
-	type Plugin struct {
-		cmd ???
-	}
-
-	func (o *Plugin) Type() (string, error) {
-		err := cmd.SendID(FUNC_TYPE)
-		err := cmd.SendArgs([]byte{})
-		rets, err := cmd.RecvReturn()
-		return string(rets), nil
-	}
-
-	func (o *Plugin) Hello() (string, error) {
-		err := cmd.SendID(FUNC_HELLO)
-		err := cmd.SendArgs([]byte{})
-		rets, err := cmd.RecvReturn()
-		return string(rets), nil
-	}
-
-	func (o *Plugin) Hello2(str string) (string, error) {
-		err := cmd.SendID(FUNC_HELLO2)
-		err := cmd.SendArgs([]byte{str})
-		rets, err := cmd.RecvReturn()
-		return string(rets), nil
-	}
-
-	func (o *Plugin) close() error {
-		err := cmd.SendID(FUNC_CLOSE)
-		err := cmd.SendArgs([]byte{})
-		return nil
-	}
-
-
-	// vendor interface
-	func DispatchLoop(adapt *HelloAdapter) error {
-		cmd, err := NewCmd2(os.Stdin, os.Stdout)
-
-		for {
-			funcID, err := cmd.RecvID()
-			args, err   := cmd.RecvArgs()
-
-			switch (funcID) {
-			case FUNC_TYPE:
-				rets := adapt.Type()
-				err := cmd.SendReturn([]byte(rets))
-
-			case FUNC_HELLO:
-				rets := adapt.Hello()
-				err := cmd.SendReturn([]byte(rets))
-
-			case FUNC_HELLO2:
-				str := string(args)
-				rets := adapt.Hello2(str)
-				err := cmd.SendReturn([]byte(rets))
-
-			case FUNC_CLOSE:
-				return nil
+		switch funcID {
+		case FUNC_TYPE:
+			rets := adapt.Type()
+			err := cmd.SendReturn([]byte(rets))
+			if err != nil {
+				return err
 			}
+
+		case FUNC_HELLO:
+			rets := adapt.Hello()
+			err := cmd.SendReturn([]byte(rets))
+			if err != nil {
+				return err
+			}
+
+		case FUNC_HELLO2:
+			str := string(args)
+			rets := adapt.Hello2(str)
+			err := cmd.SendReturn([]byte(rets))
+			if err != nil {
+				return err
+			}
+
+		case FUNC_CLOSE:
+			return nil
 		}
 	}
+}
 
-
-	// Adapter
-	type HelloAdapter interface {
-		Type() string
-		Hello() string
-		Hello2(string) string
-	}
-*/
+//
+// Adapter
+//
+type HelloAdapter interface {
+	Type() string
+	Hello() string
+	Hello2(string) string
+}
