@@ -1,22 +1,29 @@
 package main
 
-/*
-  type Hello struct {
-	}
+import (
+	"fmt"
 
-	func (o *Hello) Tag() string {
-		return "tag_hello"
-	}
+	"github.com/hidez8891/go-pipe-plugin-sample/plugin"
+)
 
-	func (o *Hello) Hello() string {
-		return fmt.Sprintf("Hello!")
-	}
+type Hello struct {
+}
 
-	func (o *Hello) Hello2(str string) string {
-		return fmt.Sprintf("Hello %s!", str)
-	}
+func (o *Hello) Type() string {
+	return "tag_hello"
+}
 
-	func main() {
-		err := plugin.DispatchLoop(&Hello)
+func (o *Hello) Hello() string {
+	return fmt.Sprintf("Hello!")
+}
+
+func (o *Hello) Hello2(str string) string {
+	return fmt.Sprintf("Hello %s!", str)
+}
+
+func main() {
+	err := plugin.DispatchLoop(&Hello{})
+	if err != nil {
+		panic(err)
 	}
-*/
+}
