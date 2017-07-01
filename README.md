@@ -1,4 +1,6 @@
-# plugin system using stdin/stdout pipe
+# plugin system using golang's stdin/stdout pipe
+
+This is hobby project.
 
 ## overview
 ```
