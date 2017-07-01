@@ -26,7 +26,7 @@ type Plugin struct {
 }
 
 func (o *Plugin) Type() (string, error) {
-	rets, err := cmd.call(FUNC_TYPE, []byte{})
+	rets, err := o.call(FUNC_TYPE, []byte{})
 	if err != nil {
 		return "", err
 	}
@@ -34,7 +34,7 @@ func (o *Plugin) Type() (string, error) {
 }
 
 func (o *Plugin) Hello() (string, error) {
-	rets, err := cmd.call(FUNC_HELLO, []byte{})
+	rets, err := o.call(FUNC_HELLO, []byte{})
 	if err != nil {
 		return "", err
 	}
@@ -42,7 +42,7 @@ func (o *Plugin) Hello() (string, error) {
 }
 
 func (o *Plugin) Hello2(str string) (string, error) {
-	rets, err := cmd.call(FUNC_HELLO2, []byte{str})
+	rets, err := o.call(FUNC_HELLO2, []byte(str))
 	if err != nil {
 		return "", err
 	}
@@ -50,27 +50,23 @@ func (o *Plugin) Hello2(str string) (string, error) {
 }
 
 func (o *Plugin) close() error {
-	err := cmd.SendID(FUNC_CLOSE)
-	if err != nil {
-		return "", err
+	if err := o.cmd.SendID(FUNC_CLOSE); err != nil {
+		return err
 	}
-	err := cmd.SendArgs([]byte{})
-	if err != nil {
-		return "", err
+	if err := o.cmd.SendArgs([]byte{}); err != nil {
+		return err
 	}
 	return nil
 }
 
 func (o *Plugin) call(id FuncID, args []byte) ([]byte, error) {
-	err := cmd.SendID(id)
-	if err != nil {
+	if err := o.cmd.SendID(id); err != nil {
 		return nil, err
 	}
-	err := cmd.SendArgs(args)
-	if err != nil {
+	if err := o.cmd.SendArgs(args); err != nil {
 		return nil, err
 	}
-	return cmd.RecvReturn()
+	return o.cmd.RecvReturn()
 }
 
 //
@@ -102,7 +98,7 @@ func Release() {
 
 func Get(tag string) (*Plugin, error) {
 	if pl, ok := plugins[tag]; ok {
-		return plugins[tag], nil
+		return pl, nil
 	} else {
 		return nil, fmt.Errorf("Not Loaded %s", tag)
 	}
@@ -111,7 +107,7 @@ func Get(tag string) (*Plugin, error) {
 //
 // vendor interface
 //
-func DispatchLoop(adapt *HelloAdapter) error {
+func DispatchLoop(adapt HelloAdapter) error {
 	cmd, err := NewCmd2(os.Stdin, os.Stdout)
 	if err != nil {
 		return err

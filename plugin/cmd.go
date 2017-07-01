@@ -15,7 +15,7 @@ type Cmd struct {
 func NewCmd(path string) (*Cmd, error) {
 	cmd := exec.Command(path)
 
-	r, err := cmd.StdoutPipe
+	r, err := cmd.StdoutPipe()
 	if err != nil {
 		return nil, err
 	}
@@ -24,8 +24,7 @@ func NewCmd(path string) (*Cmd, error) {
 		return nil, err
 	}
 
-	err := cmd.Start()
-	if err != nil {
+	if err := cmd.Start(); err != nil {
 		return nil, err
 	}
 
@@ -36,18 +35,18 @@ func NewCmd2(r io.Reader, w io.Writer) (*Cmd, error) {
 	return &Cmd{r: r, w: w}, nil
 }
 
-func (o *Cmd) SendID(id int) error {
-	return o.sendInt64(id)
+func (o *Cmd) SendID(id FuncID) error {
+	return o.sendInt64(int64(id))
 }
 
-func (o *Cmd) RecvID() (int, error) {
+func (o *Cmd) RecvID() (FuncID, error) {
 	n, err := o.recvInt64()
-	return int(n), err
+	return FuncID(n), err
 }
 
 func (o *Cmd) SendArgs(block []byte) error {
 	size := len(block)
-	if err := o.sendInt64(size); err != nil {
+	if err := o.sendInt64(int64(size)); err != nil {
 		return err
 	}
 
@@ -69,14 +68,14 @@ func (o *Cmd) RecvArgs() ([]byte, error) {
 		return nil, err
 	}
 
-	index := 0
+	index := int64(0)
 	buff := make([]byte, size)
 	for index < size {
 		n, err := o.r.Read(buff[index:])
 		if err != nil {
-			return err
+			return nil, err
 		}
-		index += n
+		index += int64(n)
 	}
 
 	return buff, nil
@@ -93,7 +92,7 @@ func (o *Cmd) RecvReturn() ([]byte, error) {
 func (o *Cmd) sendInt64(v int64) error {
 	buff := make([]byte, 8)
 	for i := 0; i < 8; i++ {
-		buff[i] = v & 0x00FF
+		buff[i] = byte(v & int64(0xFF))
 		v >>= 8
 	}
 
@@ -118,9 +117,10 @@ func (o *Cmd) recvInt64() (int64, error) {
 		return 0, fmt.Errorf("ERR: recv %d Byte, want %d Byte", n, 8)
 	}
 
+	v := int64(0)
 	for i := 7; i >= 0; i-- {
 		v <<= 8
-		v |= buff[i]
+		v |= int64(buff[i])
 	}
 
 	return v, nil
